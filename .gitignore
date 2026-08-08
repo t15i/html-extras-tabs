@@ -1,0 +1,12 @@
+# NodeJS
+node_modules
+
+# tsc
+build
+
+# Vite
+dist
+coverage
+
+# Vitest
+__screenshots__
