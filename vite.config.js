@@ -1,4 +1,5 @@
 import dts from "vite-plugin-dts";
+import babel from "vite-plugin-babel";
 
 import { playwright } from "@vitest/browser-playwright";
 
@@ -11,9 +12,23 @@ import { playwright } from "@vitest/browser-playwright";
  */
 export default {
   plugins: [
+    babel({
+      enforce: "pre",
+      include: /\.tsx?$/,
+      babelConfig: {
+        sourceMaps: true,
+        plugins: [
+          [
+            "@babel/plugin-transform-typescript",
+            { onlyRemoveTypeImports: true, allowDeclareFields: true },
+          ],
+          ["@babel/plugin-proposal-decorators", { version: "2023-11" }],
+        ],
+      },
+    }),
     dts({
       tsconfigPath: "./lib/tsconfig.json",
-      outDirs: "./dist/types",
+      outDir: "./dist/types",
     }),
   ],
   resolve: {
@@ -27,7 +42,6 @@ export default {
       enabled: true,
       provider: playwright(),
       instances: [{ browser: "chromium" }, { browser: "firefox" }],
-      isolate: false,
     },
     coverage: {
       enabled: true,
@@ -52,6 +66,7 @@ export default {
           dir: "dist/lib",
           entryFileNames: "[name].js",
           preserveModules: true,
+          preserveModulesRoot: "lib",
           minify: false,
         },
         {
