@@ -917,16 +917,15 @@ list.tabs[7] = tab; // grows the set, then appends
 
 # From a CDN
 
-The components and the core are published as modules. Name them once in an
-import map and the page, the components and the core all meet on one copy of
-each:
+The components and the core are published as modules. The components fetch the
+core by name, so an import map names it once; the components themselves are a
+URL and go straight into a `src`:
 
 ```html
 <script type="importmap">
   {
     "imports": {
-      "@html-extras/core": "https://cdn.jsdelivr.net/npm/@html-extras/core@1.0.0/dist/cdn/index.esm.js",
-      "@html-extras/tabs": "https://cdn.jsdelivr.net/npm/@html-extras/tabs@1.0.0/dist/cdn/index.esm.js"
+      "@html-extras/core": "https://cdn.jsdelivr.net/npm/@html-extras/core@1.0.0/dist/cdn/index.esm.js"
     }
   }
 </script>
@@ -935,18 +934,19 @@ each:
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/@html-extras/tabs@1.0.0/dist/styles.css"
 />
-
-<script type="module">
-  import "@html-extras/tabs";
-</script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@html-extras/tabs@1.0.0/dist/cdn/index.esm.js"
+></script>
 ```
 
-The map has to come before the first module that resolves through it. The core
-is fetched by the components themselves, so a page that adds nothing of its own
-writes no import for it.
+The map has to come before the first module that resolves through it. A page
+that writes its own `import "@html-extras/tabs"` adds that name to the map as
+well, pointing at the same URL the `src` above uses; a name and a URL that
+disagree are two modules.
 
 For a page that wants the tabs and nothing else there is a standalone build with
-the core inside it, which needs no map and no script of its own:
+the core inside it, which needs no map:
 
 ```html
 <link
