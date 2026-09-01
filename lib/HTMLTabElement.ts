@@ -1,12 +1,16 @@
 import {
   Attribute,
+  sourced,
   backward,
   Boolean,
   clickSuppressor,
-  connectivity,
+  computed,
+  connected,
   Constructor,
   effect,
   Exposed,
+  tabindex,
+  type TabIndex,
   forward,
   Interface,
   InterfaceType,
@@ -14,60 +18,73 @@ import {
   Nullable,
   Reflect,
   ref,
-  refTarget,
-  signal,
-  tabindex,
+  referable,
   ToggleTaskTracker,
   watch,
+  type Sourced,
+  type Connected,
+  type ReadonlySignal,
   type Reference,
-  type Signal,
-  type TabIndex,
 } from "@html-extras/core";
 
 import { TAB_LIST } from "./names";
 
 import { tabs } from "./HTMLTabElementShare";
+import { lists } from "./HTMLTabListElementShare";
 
 import type { HTMLTabListElement } from "./HTMLTabListElement";
 import type { HTMLTabPanelElement } from "./HTMLTabPanelElement";
 
 /**
- * A tab of the tab set of a `tab-list`.
+ * The `HTMLTabElement` interface represents a `tab-item` element: one tab of
+ * the tab set of a `tab-list`.
  */
 @Exposed("Window")
-@Interface
+@Interface("HTMLTabElement")
 @Constructor
 export class HTMLTabElement extends HTMLElement {
-  static observedAttributes: string[] = ["id", "tabindex"];
+  static observedAttributes: string[] = [
+    "id",
+    "tabindex",
+    "selected",
+    "disabled",
+    "panel",
+  ];
 
   /**
-   * Whether the tab is selected, and its panel therefore shown.
+   * A boolean value reflecting the `selected` HTML attribute, which indicates
+   * whether the tab is selected and its panel therefore shown.
    */
   @Reflect
   @Attribute(Boolean)
   accessor selected: boolean = false;
 
   /**
-   * Whether activating the tab is disabled.
+   * A boolean value reflecting the `disabled` HTML attribute, which indicates
+   * that the tab is unavailable to be selected.
    */
   @Reflect
   @Attribute(Boolean)
   accessor disabled: boolean = false;
 
   /**
-   * The panel this tab controls.
+   * An `HTMLTabPanelElement` reflecting the `panel` HTML attribute, which
+   * references the panel this tab controls. The value is null if the
+   * attribute is absent or names no such panel.
    */
   @Reflect("panel")
   @Attribute(Nullable(InterfaceType(HTMLElement)))
   accessor panelElement: HTMLTabPanelElement | null = null;
 
   /**
-   * The number of tabs of the same tab set that come before this one in tree
-   * order, or -1 when the tab is in no tab set.
+   * A long representing the position of the tab within the tab set it belongs
+   * to, in tree order. If the tab is not part of a tab set, the value is -1.
+   *
+   * @readonly
    */
   @Attribute(Long)
   get index(): number {
-    const list = this.#list;
+    const list = this.#getListElement();
     if (list === null) return -1;
 
     const preceding = backward(list.tabs, this);
@@ -85,31 +102,35 @@ export class HTMLTabElement extends HTMLElement {
 
     this.#toggle = new ToggleTaskTracker(this);
 
-    const { connected, root, mount } = connectivity(this);
-    this.#connected = connected;
+    this.#connected = connected(this);
 
-    this.#id = signal(null);
-    this.#disabled = signal(false);
-    this.#selected = signal(false);
+    this.#root = computed(() =>
+      this.#connected() ? this.getRootNode() : null,
+    );
+    this.#list = computed(() =>
+      this.#connected() ? this.#getListElement() : null,
+    );
 
-    this.#panelElement = ref(() => this.panelElement, root);
+    this.#id = sourced(() => this.getAttribute("id"), null);
+    this.#disabled = sourced(() => this.disabled, false);
+    this.#selected = sourced(() => this.selected, false);
+    this.#panel = sourced(() => this.getAttribute("panel"), null);
 
-    this.#tabindex = tabindex(this, () => {
-      if (!this.#connected()) return null;
-      return this.#list ? (this.#selected() ? 0 : -1) : null;
+    this.#automatic = computed(() => {
+      return lists.shared(this.#list())?.automatic() ?? false;
+    });
+    this.#revealable = computed(() => {
+      return !this.#disabled() && this.#automatic();
     });
 
-    mount(() => this.#ensureTabExclusivityByClosingTab());
+    this.#tabindex = tabindex(this, () => {
+      if (this.#list() === null) return null;
+      return this.#selected() ? 0 : -1;
+    });
 
-    watch(this.#selected, (selected, oldSelected) => {
-      if (oldSelected === undefined) return;
-
-      this.#toggle.queue(
-        oldSelected ? "open" : "closed",
-        selected ? "open" : "closed",
-      );
-
-      if (selected) this.#ensureTabExclusivityByClosingOtherTabs();
+    this.#panelElement = ref(() => this.panelElement, {
+      id: this.#panel,
+      root: this.#root,
     });
 
     effect(() => {
@@ -125,7 +146,9 @@ export class HTMLTabElement extends HTMLElement {
     effect(() => {
       const panel = this.#panelElement();
       if (panel) {
-        this.#internals.ariaExpanded = this.#selected() ? "true" : "false";
+        effect(() => {
+          this.#internals.ariaExpanded = this.#selected() ? "true" : "false";
+        });
         this.#internals.ariaControlsElements = [panel];
       } else {
         this.#internals.ariaExpanded = null;
@@ -133,14 +156,22 @@ export class HTMLTabElement extends HTMLElement {
       }
     });
 
-    refTarget(this, {
+    watch(this.#selected, (selected, oldSelected) => {
+      this.#toggle.queue(
+        oldSelected ? "open" : "closed",
+        selected ? "open" : "closed",
+      );
+      if (selected) this.#ensureTabExclusivityByClosingOtherTabs();
+    });
+
+    referable(this, {
       id: this.#id,
-      root,
+      root: this.#root,
     });
 
     clickSuppressor(this, {
       suppress: this.#disabled,
-      root,
+      root: this.#root,
     });
 
     this.addEventListener("focus", this.#onFocus);
@@ -148,7 +179,10 @@ export class HTMLTabElement extends HTMLElement {
     this.addEventListener("keydown", this.#onKeyDown);
     this.addEventListener("keyup", this.#onKeyUp);
 
-    tabs.share(this, { selected: this.#selected });
+    tabs.share(this, {
+      selected: this.#selected,
+      revealable: this.#revealable,
+    });
   }
 
   override click(): void {
@@ -157,54 +191,69 @@ export class HTMLTabElement extends HTMLElement {
   }
 
   connectedCallback(): void {
-    this.#connected(true);
+    this.#ensureTabExclusivityByClosingTab();
+    this.#connected.announce();
   }
 
   disconnectedCallback(): void {
-    this.#connected(false);
+    this.#ensureTabExclusivityByClosingTab();
+    this.#connected.announce();
   }
 
   attributeChangedCallback(
     name: string,
     _: string | null,
-    value: string | null,
+    __: string | null,
+    namespace: string | null,
   ): void {
+    if (namespace !== null) return;
+
     switch (String(name)) {
-      case "selected":
-        this.#selected(this.selected);
-        break;
-      case "disabled":
-        this.#disabled(this.disabled);
-        break;
-      case "panel":
-        this.#panelElement(value);
-        break;
       case "id":
-        this.#id(value);
+        this.#id.announce();
         break;
       case "tabindex":
-        this.#tabindex(value);
+        this.#tabindex.announce();
+        break;
+      case "selected":
+        this.#selected.announce();
+        break;
+      case "disabled":
+        this.#disabled.announce();
+        break;
+      case "panel":
+        this.#panel.announce();
         break;
     }
   }
 
   #internals: ElementInternals;
 
-  #connected: Signal<boolean>;
-
-  #id: Signal<string | null>;
-
-  #disabled: Signal<boolean>;
-
-  #selected: Signal<boolean>;
-
-  #panelElement: Reference<HTMLTabPanelElement>;
-
   #toggle: ToggleTaskTracker;
 
   #tabindex: TabIndex;
 
-  get #list(): HTMLTabListElement | null {
+  #connected: Connected;
+
+  #root: ReadonlySignal<Node | null>;
+
+  #list: ReadonlySignal<HTMLTabListElement | null>;
+
+  #id: Sourced<string | null>;
+
+  #disabled: Sourced<boolean>;
+
+  #selected: Sourced<boolean>;
+
+  #panel: Sourced<string | null>;
+
+  #automatic: ReadonlySignal<boolean>;
+
+  #revealable: ReadonlySignal<boolean>;
+
+  #panelElement: Reference<HTMLTabPanelElement>;
+
+  #getListElement(): HTMLTabListElement | null {
     const parent = this.parentElement;
     if (parent === null) return null;
     if (parent.localName !== TAB_LIST) return null;
@@ -217,7 +266,7 @@ export class HTMLTabElement extends HTMLElement {
    * set, if the set is an exclusive one.
    */
   #ensureTabExclusivityByClosingOtherTabs(): void {
-    const list = this.#list;
+    const list = this.#getListElement();
     if (list === null) return;
     if (list.multiple) return;
 
@@ -235,7 +284,7 @@ export class HTMLTabElement extends HTMLElement {
   #ensureTabExclusivityByClosingTab(): void {
     if (!this.hasAttribute("selected")) return;
 
-    const list = this.#list;
+    const list = this.#getListElement();
     if (list === null) return;
     if (list.multiple) return;
 
@@ -256,8 +305,6 @@ export class HTMLTabElement extends HTMLElement {
 
   /**
    * Asks for activation on the keys the platform activates a control with.
-   *
-   * @param event - The keydown event.
    */
   #onKeyDown(event: KeyboardEvent): void {
     if (event.target !== this) return;
@@ -275,8 +322,6 @@ export class HTMLTabElement extends HTMLElement {
 
   /**
    * Runs the activation behavior on the release of Space.
-   *
-   * @param event - The keyup event.
    */
   #onKeyUp(event: KeyboardEvent): void {
     if (event.target !== this) return;
@@ -294,9 +339,7 @@ export class HTMLTabElement extends HTMLElement {
    * it belongs to activates its tabs automatically.
    */
   #onFocus() {
-    const list = this.#list;
-    if (list === null) return;
-    if (list.multiple || list.manual) return;
+    if (!this.#automatic()) return;
 
     this.#activate();
   }
@@ -304,6 +347,6 @@ export class HTMLTabElement extends HTMLElement {
   /** The activation behavior of the tab. */
   #activate() {
     if (this.disabled) return;
-    this.selected = this.#list?.multiple ? !this.selected : true;
+    this.selected = this.#getListElement()?.multiple ? !this.selected : true;
   }
 }

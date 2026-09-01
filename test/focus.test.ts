@@ -28,6 +28,20 @@ const tabOf = (container: ParentNode, selector = "tab-item"): HTMLTabElement =>
   container.querySelector<HTMLTabElement>(selector)!;
 
 describe("the tabindex of a tab", () => {
+  it("follows the tab into another set", () => {
+    const container = fixture(`
+      <tab-list id="one"><tab-item id="t1" selected>One</tab-item></tab-list>
+      <tab-list id="two"><tab-item id="t2" selected>Two</tab-item></tab-list>
+    `);
+
+    // An ordinary move: the tab is removed and inserted again, and the two
+    // reactions of that are interleaved by the platform.
+    container.querySelector("#two")!.append(container.querySelector("#t1")!);
+
+    expect(tabOf(container, "#t1").getAttribute("tabindex")).toBe("-1");
+    expect(tabOf(container, "#t2").getAttribute("tabindex")).toBe("0");
+  });
+
   it("is absent while the tab is in no tab set", () => {
     const tab = tabOf(fixture(`<tab-item></tab-item>`));
 
@@ -394,5 +408,28 @@ describe("automatic activation", () => {
     tab.focus();
 
     expect(tab.selected).toBe(false);
+  });
+});
+
+describe("an attribute of a tab in a namespace", () => {
+  it("does not take the tabindex attribute away from the tab", () => {
+    const container = fixture(`
+      <tab-list>
+        <tab-item id="t1" selected>One</tab-item>
+        <tab-item id="t2">Two</tab-item>
+      </tab-list>
+    `);
+    const tab = tabOf(container, "#t1");
+
+    expect(tab.getAttribute("tabindex")).toBe("0");
+
+    // It shares the local name of the attribute the tab wrote itself and
+    // nothing else. Hearing about it must not record the tab's own value as
+    // the author's, which would leave the tab out of the tab order for good.
+    tab.setAttributeNS("urn:x", "x:tabindex", "5");
+
+    tabOf(container, "#t2").setAttribute("selected", "");
+
+    expect(tab.getAttributeNS(null, "tabindex")).toBe("-1");
   });
 });

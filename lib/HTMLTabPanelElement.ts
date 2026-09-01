@@ -1,35 +1,46 @@
 import {
   Attribute,
+  sourced,
+  computed,
+  connected,
   Constructor,
   effect,
   Exposed,
+  hidden,
   Interface,
   InterfaceType,
   Nullable,
   Reflect,
   ref,
-  refTarget,
-  signal,
+  referable,
+  styled,
+  type Sourced,
+  type Connected,
+  type Hidden,
   type Reference,
-  type Signal,
-  connectivity,
+  type ReadonlySignal,
 } from "@html-extras/core";
+
+import { styles } from "./styles";
 
 import { tabs } from "./HTMLTabElementShare";
 
 import type { HTMLTabElement } from "./HTMLTabElement";
 
 /**
- * The content shown when the corresponding tab is selected.
+ * The `HTMLTabPanelElement` interface represents a `tab-panel` element: the
+ * content shown when the tab that labels it is selected.
  */
 @Exposed("Window")
-@Interface
+@Interface("HTMLTabPanelElement")
 @Constructor
 export class HTMLTabPanelElement extends HTMLElement {
-  static observedAttributes: string[] = ["id"];
+  static observedAttributes: string[] = ["id", "hidden", "tab"];
 
   /**
-   * The tab that labels this panel.
+   * An `HTMLTabElement` reflecting the `tab` HTML attribute, which references
+   * the tab that labels this panel. The value is null if the attribute is
+   * absent or names no such tab.
    */
   @Reflect("tab")
   @Attribute(Nullable(InterfaceType(HTMLElement)))
@@ -40,11 +51,29 @@ export class HTMLTabPanelElement extends HTMLElement {
     this.#internals = this.attachInternals();
     this.#internals.role = "tabpanel";
 
-    const { connected, root } = connectivity(this);
-    this.#connected = connected;
+    this.#connected = connected(this);
 
-    this.#id = signal(null);
-    this.#tabElement = ref(() => this.tabElement, root);
+    this.#root = computed(() =>
+      this.#connected() ? this.getRootNode() : null,
+    );
+
+    this.#id = sourced(() => this.getAttribute("id"), null);
+    this.#tab = sourced(() => this.getAttribute("tab"), null);
+
+    this.#hidden = hidden(this, () => {
+      if (!this.#connected()) return null;
+
+      const shared = tabs.shared(this.#tabElement());
+
+      if (shared?.selected()) return null;
+      if (shared?.revealable()) return "until-found";
+      return "";
+    });
+
+    this.#tabElement = ref(() => this.tabElement, {
+      id: this.#tab,
+      root: this.#root,
+    });
 
     effect(() => {
       const tab = this.#tabElement();
@@ -64,40 +93,71 @@ export class HTMLTabPanelElement extends HTMLElement {
       }
     });
 
-    refTarget(this, {
+    referable(this, {
       id: this.#id,
-      root,
+      root: this.#root,
     });
+
+    styled(styles, {
+      root: this.#root,
+    });
+
+    this.addEventListener("beforematch", this.#onBeforeMatch);
   }
 
   connectedCallback(): void {
-    this.#connected(true);
+    this.#connected.announce();
   }
 
   disconnectedCallback(): void {
-    this.#connected(false);
+    this.#connected.announce();
   }
 
   attributeChangedCallback(
     name: string,
     _: string | null,
-    value: string | null,
+    __: string | null,
+    namespace: string | null,
   ): void {
+    if (namespace !== null) return;
+
     switch (String(name)) {
       case "tab":
-        this.#tabElement(value);
+        this.#tab.announce();
         break;
       case "id":
-        this.#id(value);
+        this.#id.announce();
+        break;
+      case "hidden":
+        this.#hidden.announce();
         break;
     }
   }
 
   #internals: ElementInternals;
 
-  #id: Signal<string | null>;
+  #hidden: Hidden;
 
-  #connected: Signal<boolean>;
+  #connected: Connected;
+
+  #root: ReadonlySignal<Node | null>;
+
+  #id: Sourced<string | null>;
+
+  #tab: Sourced<string | null>;
 
   #tabElement: Reference<HTMLTabElement>;
+
+  /**
+   * Runs the beforematch processing steps of the panel: the user agent is
+   * about to reveal the content, and the tab of the panel is what shows it.
+   */
+  #onBeforeMatch(event: Event): void {
+    if (event.target !== this) return;
+
+    const tab = this.#tabElement();
+    if (tab === null) return;
+
+    this.#hidden.concede(() => tab.setAttribute("selected", ""));
+  }
 }

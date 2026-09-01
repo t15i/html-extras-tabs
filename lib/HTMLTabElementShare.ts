@@ -10,9 +10,11 @@ export interface HTMLTabElementShare {
    * Whether the tab has the `selected` attribute specified.
    */
   selected: ReadonlySignal<boolean>;
+
+  /**
+   * Whether the tab can be selected by revealing the content of its panel.
+   */
+  revealable: ReadonlySignal<boolean>;
 }
 
-/**
- * The channel every `tab-item` shares its state on.
- */
 export const tabs: Share<HTMLTabElement, HTMLTabElementShare> = share();

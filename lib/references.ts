@@ -35,4 +35,5 @@ namedItem[0]!.returnType = NullableHTMLTabElement;
 
 const collection = InterfaceObject.getInterfaceOf(HTMLTabsCollection)!;
 const collectionAdd = collection.members["add"] as IDLOperation[];
-collectionAdd[0]!.arguments[0]!.type = NullableHTMLTabElement;
+collectionAdd[0]!.arguments[0]!.type = HTMLTabElementType;
+collection.indexedPropertySetter!.arguments[1]!.type = NullableHTMLTabElement;

@@ -49,12 +49,11 @@ export interface HTMLTabsCollection {
 }
 
 /**
- * A collection of `tab-item` elements, always rooted at a `tab-list` element.
- *
- * @see tabs-collection.txt
+ * The `HTMLTabsCollection` interface represents a collection of `tab-item`
+ * (`HTMLTabElement`) elements, always rooted at a `tab-list` element.
  */
 @Exposed("Window")
-@Interface
+@Interface("HTMLTabsCollection")
 @Constructor([Argument(InterfaceType(HTMLElement), "root")])
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging -- see the interface above
 export class HTMLTabsCollection extends BlinklikeHTMLCollection<HTMLTabElement> {
@@ -66,16 +65,14 @@ export class HTMLTabsCollection extends BlinklikeHTMLCollection<HTMLTabElement> 
   }
 
   /**
-   * The number of tabs in the collection.
+   * Returns or sets the number of tabs in the collection. Setting it either
+   * grows the tab set with new tabs or cuts tabs off its end.
    */
   @Attribute(UnsignedLong)
   override get length(): number {
     return this[Internals].data.length;
   }
 
-  /**
-   * Grows the tab set with new tabs, or cuts tabs off its end.
-   */
   @Attribute(UnsignedLong)
   override set length(value: number) {
     const data = this[Internals].data;
@@ -95,8 +92,8 @@ export class HTMLTabsCollection extends BlinklikeHTMLCollection<HTMLTabElement> 
   }
 
   /**
-   * The index of the selected tab of the tab set, or -1 when none is
-   * selected.
+   * Returns or sets the index of the selected tab of the tab set. The value
+   * -1 indicates no tab is selected.
    */
   @Attribute(Long)
   get selectedIndex(): number {
@@ -109,7 +106,7 @@ export class HTMLTabsCollection extends BlinklikeHTMLCollection<HTMLTabElement> 
   }
 
   /**
-   * Inserts `tab` into the tab set.
+   * Adds a tab to the tab set.
    *
    * @param tab - The tab to insert.
    * @param before - The tab to insert it before, either as an element or as
@@ -164,7 +161,7 @@ export class HTMLTabsCollection extends BlinklikeHTMLCollection<HTMLTabElement> 
   }
 
   /**
-   * Removes the tab at `index` from the tab set.
+   * Removes the tab at the given index from the tab set.
    *
    * @param index - The index of the tab to remove.
    *

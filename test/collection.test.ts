@@ -52,11 +52,6 @@ function list(count: number, attributes = ""): HTMLTabListElement {
  * @param steps - What to run.
  *
  * @returns The error.
- *
- * @remarks
- * The exception of an operation reaches the caller as it was thrown, which is
- * what WebIDL asks for and what the machinery now does; it used to arrive
- * wrapped in a `TypeError` carrying it as a cause.
  */
 function thrownBy(steps: () => void): Error {
   try {

@@ -136,6 +136,44 @@ describe("tab-item", () => {
       expect(internalsOf(tab).ariaControlsElements).toBeNull();
     });
 
+    it("appear once the panel is set through the IDL attribute", () => {
+      const container = fixture(`
+        <tab-item></tab-item>
+        <tab-panel></tab-panel>
+      `);
+      const tab = tabOf(container);
+      const panel = container.querySelector<HTMLTabPanelElement>("tab-panel")!;
+
+      // Setting the panel through the IDL attribute writes the content
+      // attribute, and the reaction to that write is what the reference hears.
+      // The platform runs it after the whole setter, by which point the
+      // element is recorded - measured against a native attr-element
+      // attribute in both engines.
+      tab.panelElement = panel;
+
+      expect(tab.getAttribute("panel")).toBe("");
+      expect(tab.panelElement).toBe(panel);
+      expect(internalsOf(tab).ariaExpanded).toBe("false");
+      expect(internalsOf(tab).ariaControlsElements).toEqual([panel]);
+    });
+
+    it("follow the panel from one set through the IDL attribute to the next", () => {
+      const container = fixture(`
+        <tab-item></tab-item>
+        <tab-panel id="first"></tab-panel>
+        <tab-panel id="second"></tab-panel>
+      `);
+      const tab = tabOf(container);
+      const [first, second] =
+        container.querySelectorAll<HTMLTabPanelElement>("tab-panel");
+
+      tab.panelElement = first!;
+      tab.panelElement = second!;
+
+      expect(tab.panelElement).toBe(second);
+      expect(internalsOf(tab).ariaControlsElements).toEqual([second]);
+    });
+
     it("ignore an element of another type carrying the id", () => {
       const container = fixture(`
         <tab-item panel="p"></tab-item>
@@ -226,6 +264,16 @@ describe("tab-item", () => {
       list.innerHTML = `<tab-item></tab-item><tab-item id="second"></tab-item>`;
 
       expect(list.querySelector<HTMLTabElement>("#second")!.index).toBe(1);
+    });
+
+    it("counts in a tree of its own after it has been asked once", () => {
+      const tab = document.createElement("tab-item") as HTMLTabElement;
+      expect(tab.index).toBe(-1);
+
+      const list = document.createElement("tab-list");
+      list.append(tab);
+
+      expect(tab.index).toBe(0);
     });
   });
 });

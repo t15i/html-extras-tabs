@@ -12,12 +12,6 @@ afterEach(() => {
 
 /**
  * Resolves once every task queued before it has run.
- *
- * @remarks
- * A toggle task tracker is the only public door to the task source the
- * library queues on, and the toggle event it fires is what says its task has
- * run. The element it fires at is made here and thrown away, so nothing under
- * test hears it.
  */
 function drain(): Promise<void> {
   return new Promise<void>((resolve) => {
@@ -72,7 +66,31 @@ function toggles(container: ParentNode): string[] {
   return records;
 }
 
+/**
+ * Moves `tab` into `list` the way the platform moves a node without taking it
+ * out of the document on the way.
+ *
+ * @param list - Where to move it.
+ * @param tab - What to move.
+ */
+function moveInto(list: Element, tab: Element): void {
+  (
+    list as Element & { moveBefore(node: Node, child: Node | null): void }
+  ).moveBefore(tab, null);
+}
+
 describe("exclusivity of a tab set", () => {
+  it("is ensured for a tab moved into the set without a disconnection", () => {
+    const container = fixture(`
+      <tab-list id="one"><tab-item id="t1" selected>One</tab-item></tab-list>
+      <tab-list id="two"><tab-item id="t2" selected>Two</tab-item></tab-list>
+    `);
+
+    moveInto(container.querySelector("#two")!, container.querySelector("#t1")!);
+
+    expect(selection(container)).toEqual(["t2"]);
+  });
+
   it("unselects the tab that was selected when another is selected", () => {
     const container = fixture(`
       <tab-list>

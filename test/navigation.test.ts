@@ -199,6 +199,20 @@ describe("moving focus around a tab set", () => {
     expect(focused()).toBe("button");
   });
 
+  it("does nothing for a key pressed on an element that is not an HTML one", () => {
+    const container = fixture(`
+      <tab-list>
+        <svg id="icon" tabindex="0" width="16" height="16"></svg>
+        <tab-item id="a">A</tab-item>
+      </tab-list>
+    `);
+    container.querySelector<SVGElement>("#icon")!.focus();
+
+    press("ArrowRight");
+
+    expect(focused()).toBe("icon");
+  });
+
   it("does nothing for a tab that is not a direct child of the list", () => {
     const container = fixture(`
       <tab-list>

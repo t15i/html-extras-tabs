@@ -1,0 +1,27 @@
+/*
+ * The rule a page needs before the definitions arrive.
+ *
+ * A tab-panel carries nothing that hides it until its element has upgraded
+ * and written the hidden attribute, and the definitions arrive after the
+ * document has been parsed. Between the two the content of every panel is
+ * laid out and shown, and it is the closed ones disappearing afterwards that
+ * the reader sees. Only a style sheet the parser has already met can close
+ * that window, which is why this one is a file and not the sheet the library
+ * adopts for itself.
+ *
+ * It is needed wherever the markup of a tab-panel arrives in HTML the browser
+ * parses before the definitions load: a static page, or one rendered on the
+ * server. A page that builds its tabs from script does not need it at all -
+ * elements it creates are upgraded as they are made, and this never matches.
+ *
+ * Without a script there is no upgrade, so nothing is ever shown. That is the
+ * trade this file makes, and a page that has to work without script should
+ * not include it.
+ *
+ * A tab-panel inside a declarative shadow root is out of reach here: the
+ * parser builds that tree too, and a sheet of the document does not cross the
+ * boundary. Such a page repeats the rule inside the template.
+ */
+tab-panel:not(:defined) {
+  display: none;
+}

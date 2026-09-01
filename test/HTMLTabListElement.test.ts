@@ -172,3 +172,20 @@ describe("tab-list", () => {
     });
   });
 });
+
+describe("an attribute of a tab-list in a namespace", () => {
+  it("does not disturb the selection of the set", () => {
+    const container = fixture(`
+      <tab-list multiple>
+        <tab-item id="a" selected></tab-item>
+        <tab-item id="b" selected></tab-item>
+      </tab-list>
+    `);
+
+    // It shares the local name of the attribute that decides exclusivity and
+    // nothing else, so the set is still one that holds several selections.
+    listOf(container).setAttributeNS("urn:x", "x:multiple", "");
+
+    expect(selection(container)).toEqual(["a", "b"]);
+  });
+});
