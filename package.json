@@ -1,49 +1,72 @@
 {
-  "name": "@t15i/lib-typescript-template",
+  "name": "@html-extras/tabs",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.0.0",
-  "description": "",
-  "keywords": [],
+  "description": "Tabs as custom elements: tab-list, tab-item and tab-panel.",
+  "keywords": [
+    "tabs",
+    "tablist",
+    "tabpanel",
+    "custom-elements",
+    "web-components",
+    "aria",
+    "accessibility",
+    "html"
+  ],
   "author": "Aleksandr Boiarnikov <dev@gmvr.pw> (https://gmvr.pw)",
   "license": "MIT",
-  "homepage": "https://github.com/t15i/lib-typescript-template#README",
+  "homepage": "https://github.com/t15i/html-extras-tabs#README",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/t15i/lib-typescript-template.git"
+    "url": "git+https://github.com/t15i/html-extras-tabs.git"
   },
   "bugs": {
-    "url": "https://github.com/t15i/lib-typescript-template/issues"
+    "url": "https://github.com/t15i/html-extras-tabs/issues"
   },
-  "unpkg": "./dist/cdn/index.min.js",
-  "jsdelivr": "./dist/cdn/index.min.js",
+  "unpkg": "./dist/cdn/index.standalone.esm.js",
+  "jsdelivr": "./dist/cdn/index.standalone.esm.js",
   "exports": {
-    "types": "./dist/types/index.d.ts",
-    "import": "./dist/lib/index.js",
-    "default": "./dist/lib/index.js"
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/lib/index.js",
+      "default": "./dist/lib/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
   },
   "files": [
     "dist"
   ],
   "scripts": {
     "lint": "eslint lib test",
-    "format": "prettier --check --write lib test",
+    "format": "prettier --check --write lib test public",
     "typecheck": "tsc -p lib/tsconfig.json && tsc -p test/tsconfig.json",
     "test": "vitest watch",
-    "build": "vite build",
+    "build": "vite build && vite build --mode cdn && vite build --mode cdn-standalone",
+    "demo": "vite",
     "ci:lint": "eslint --max-warnings 1 lib test",
     "ci:lint:lib": "eslint --max-warnings 1 lib",
     "ci:lint:tests": "eslint --max-warnings 1 test",
-    "ci:format": "prettier --list-different lib test",
+    "ci:format": "prettier --list-different lib test public",
     "ci:format:lib": "prettier --list-different lib",
     "ci:format:tests": "prettier --list-different test",
     "ci:typecheck": "npm run ci:typecheck:lib && npm run ci:typecheck:tests",
     "ci:typecheck:lib": "tsc -p lib/tsconfig.json",
     "ci:typecheck:tests": "tsc -p test/tsconfig.json",
     "ci:test": "npx playwright install && vitest run --browser.headless",
-    "ci:build": "vite build"
+    "ci:build": "vite build && vite build --mode cdn && vite build --mode cdn-standalone"
+  },
+  "peerDependencies": {
+    "@html-extras/core": "^1.0.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-proposal-decorators": "^7.29.7",
+    "@babel/plugin-transform-typescript": "^7.29.7",
     "@eslint/js": "^10.0.1",
+    "@html-extras/core": "^1.0.0",
     "@vitest/browser-playwright": "^4.1.4",
     "@vitest/coverage-istanbul": "^4.1.4",
     "eslint": "^10.2.0",
@@ -54,6 +77,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.58.1",
     "vite": "^8.0.8",
+    "vite-plugin-babel": "^1.7.3",
     "vite-plugin-dts": "^5.0.3",
     "vitest": "^4.1.4"
   }
